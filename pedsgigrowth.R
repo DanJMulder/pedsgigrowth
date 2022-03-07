@@ -18,7 +18,8 @@ library(lubridate) # for creating/parsing date objects
 ui <- fluidPage(
   mainPanel(
     br(),
-    tags$b("Growth Parameters Calculator (for copy/paste into clinic note)"),
+    tags$b(h1(strong("Growth Parameters Calculator"), style = "font-size:30px;")),
+    tags$b(strong("(for copy/paste into clinic note)")),
     br(),
     br(),
     dateInput("date_of_birth", width = '50%', "Date of Birth (YYYY-MM-DD):", value = "2010-01-01"),
@@ -28,7 +29,11 @@ ui <- fluidPage(
     tagAppendAttributes(textOutput("full_text"), style = "white-space:pre-wrap;"),
     br(),
     br(),
-    paste("References: zscorer package: https://cran.r-project.org/web/packages/zscorer/index.html")
+    paste("References:"),
+    br(),
+    paste("World Health Organization. WHO Child Growth Standards: Length/Height-for-age, Weight-for- age, Weight-for-length, Weight-for-height, and Body Mass Index-for age: Methods and Development. 1st ed. World Health Organization; 2006."),
+    br(),
+    paste("zscorer package: https://cran.r-project.org/web/packages/zscorer/index.html")
     )
   )
 
@@ -44,8 +49,6 @@ server <- function(input, output, session) {
         2
       }
       
-      height_text <- input$height
-
       patient_df <- data.frame(
         age = age_in_days,
         sex = sex_coded,
@@ -53,33 +56,87 @@ server <- function(input, output, session) {
         weight = input$weight
         )
 
-      patient_df_w_hfa <- addWGSR(data = patient_df,
-                                  sex = "sex",
-                                  firstPart = "height",
-                                  secondPart = "age",
-                                  index = "hfa")
-    
+      # height
+      capture.output(patient_df_w_hfa <- addWGSR(data = patient_df,
+                                                 sex = "sex",
+                                                 firstPart = "height",
+                                                 secondPart = "age",
+                                                 index = "hfa")
+                     )
+
       height_zscore_text <- patient_df_w_hfa[[1, 5]]
-      height_percentile_text <- round(pnorm(height_zscore_text)*100,0)
-    
-      patient_df_w_wfa <- addWGSR(data = patient_df,
+      height_percentile_text <- round(pnorm(height_zscore_text)*100, 0)
+
+      # weight
+      capture.output(patient_df_w_wfa <- addWGSR(data = patient_df,
                                 sex = "sex",
                                 firstPart = "weight",
                                 secondPart = "age",
                                 index = "wfa")
-    
-      height_percentile_text <- height_percentile_text
+                     )
       
-      return(glue("Growth - ",
+      weight_zscore_text <- patient_df_w_wfa[[1, 5]]
+      weight_percentile_text <- round(pnorm(weight_zscore_text)*100, 0)
+      
+      # BMI
+      capture.output(patient_df_w_bmia <- addWGSR(data = patient_df,
+                                                 sex = "sex",
+                                                 firstPart = "weight",
+                                                 secondPart = "height",
+                                                 thirdPart = "age",
+                                                 index = "bfa")
+      )
+      
+      bmi <- round(input$weight / (((input$height)/100)^2), digits = 1)
+      
+      bmi_zscore_text <- patient_df_w_bmia[[1, 5]]
+      bmi_percentile_text <- round(pnorm(bmi_zscore_text)*100, 0)
+      
+      if (age_in_days < 3685){
+      return(glue("Growth (by WHO) - ",
                   paste0("height ",
-                         height_text,
+                         input$height,
                          " cm (percentile = ",
                          height_percentile_text,
                          ", z-score = ",
                          height_zscore_text,
+                         "), ",
+                         "weight ",
+                         input$weight,
+                         " kg (percentile = ",
+                         weight_percentile_text,
+                         ", z-score = ",
+                         weight_zscore_text,
+                         "), BMI ",
+                         bmi,
+                         " kg/m^2 (percentile = ",
+                         bmi_percentile_text,
+                         ", z-score = ",
+                         bmi_zscore_text,
                          ")")
-                )
-           )
+                  )
+             )
+      } else if (age_in_days >= 3685){
+        return(glue("Growth (by WHO) - ",
+                    paste0("height ",
+                           input$height,
+                           " cm (percentile = ",
+                           height_percentile_text,
+                           ", z-score = ",
+                           height_zscore_text,
+                           "), ",
+                           "weight ",
+                           input$weight,
+                           " kg (no WHO weight percentile/z-score for this age), BMI ",
+                           bmi,
+                           " kg/m^2 (percentile = ",
+                           bmi_percentile_text,
+                           ", z-score = ",
+                           bmi_zscore_text,
+                           ")")
+                    )
+               )
+        }
     })
   
   output$full_text <- renderPrint(formData())
