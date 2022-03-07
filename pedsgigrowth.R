@@ -22,7 +22,7 @@ ui <- fluidPage(
     tags$b(strong("(for copy/paste into clinic note)")),
     br(),
     br(),
-    dateInput("date_of_birth", width = '50%', "Date of Birth (YYYY-MM-DD):", value = "2010-01-01"),
+    dateInput("date_of_birth", width = '50%', "Date of Birth (YYYY-MM-DD):", value = "2013-01-01"),
     selectInput("sex", width = '50%', "Sex:", choices = c("female", "male")),
     numericInput("height", width = '50%', "Height (in cm):", tags$span(style = "font-weight: 400", "Height (cm)")),
     numericInput("weight", width = '50%', "Weight (in kg):", tags$span(style = "font-weight: 400", "Weight (kg)")),
