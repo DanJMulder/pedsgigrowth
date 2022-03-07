@@ -12,6 +12,7 @@ library(shiny) # for interactive web application framework
 library(tidyverse) # for basic data organization
 library(zscorer) # for calculating zscores from WHO data
 library(glue) # for gluing together text
+library(lubridate) # for creating/parsing date objects
 
 
 ui <- fluidPage(
@@ -34,27 +35,49 @@ ui <- fluidPage(
 server <- function(input, output, session) {
 
     formData <- reactive({
+      
+      age_in_days <- as.numeric(today() - ymd(input$date_of_birth))
+      
+      sex_coded <- if (input$sex == "male"){
+        1
+      } else if (input$sex == "female"){
+        2
+      }
+      
+      height_text <- input$height
+
+      patient_df <- data.frame(
+        age = age_in_days,
+        sex = sex_coded,
+        height = input$height,
+        weight = input$weight
+        )
+
+      patient_df_w_hfa <- addWGSR(data = patient_df,
+                                  sex = "sex",
+                                  firstPart = "height",
+                                  secondPart = "age",
+                                  index = "hfa")
     
-    # patient_df <- as.data.frame(
-    #   date_of_birth <- input$date_of_birth,
-    #   sex <- input$sex,
-    #   height <- input$height,
-    #   weight <- input$weight
-    # )
-    # 
-    height_text <- input$height
-    height_percentile_text <- input$height
-    height_zscore_text <- input$height
-    # height_zscore_text <- addWGSR(data = "patient_df", sex = "sex", firstPart = "height", secondPart = "weight", index = "hfa")
+      height_zscore_text <- patient_df_w_hfa[[1, 5]]
+      height_percentile_text <- round(pnorm(height_zscore_text)*100,0)
     
-    return(glue("Growth - ",
-                paste0("height ",
-                       height_text,
-                       " cm (percentile = ",
-                       height_percentile_text,
-                       ", z-score = ",
-                       height_zscore_text,
-                       ")")
+      patient_df_w_wfa <- addWGSR(data = patient_df,
+                                sex = "sex",
+                                firstPart = "weight",
+                                secondPart = "age",
+                                index = "wfa")
+    
+      height_percentile_text <- height_percentile_text
+      
+      return(glue("Growth - ",
+                  paste0("height ",
+                         height_text,
+                         " cm (percentile = ",
+                         height_percentile_text,
+                         ", z-score = ",
+                         height_zscore_text,
+                         ")")
                 )
            )
     })
